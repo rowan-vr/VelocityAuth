@@ -1,1 +1,11 @@
 hub-server: 'hub'
+server-name: 'Cool Network'
+
+#Settings for MySQL Storage
+MySQL:
+  host: 127.0.0.1
+  port: 3306
+  database: db
+  user: user
+  password: pass
+  table_prefix: velocity_auth

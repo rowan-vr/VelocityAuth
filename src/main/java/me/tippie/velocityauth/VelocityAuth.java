@@ -16,12 +16,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 @Plugin(
-        id = "VelocityAuth",
+        id = "velocityauth",
         name = "VelocityAuth",
         version = "1.0-SNAPSHOT",
         authors = {"Tippie_"}
 )
 public class VelocityAuth {
+
+    @Getter private static VelocityAuth instance;
 
     @Getter @Inject private Logger logger;
     @Getter
@@ -29,10 +31,18 @@ public class VelocityAuth {
     @Getter @Inject @DataDirectory
     private Path dataDirectory;
 
+    @Getter
+    private AuthStorage storage;
+
+    @Getter
+    private AuthManager manager;
+
+    @Getter
     private ConfigurationNode configuration;
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
+        instance = this;
         File configFile = new File(dataDirectory.toFile(), "config.yml");
         if (!configFile.exists()) {
             configFile.getParentFile().mkdirs();
@@ -41,7 +51,7 @@ public class VelocityAuth {
                          new InputStreamReader(is, StandardCharsets.UTF_8); BufferedReader reader = new BufferedReader(streamReader); FileWriter writer = new FileWriter(configFile)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    writer.write(line);
+                    writer.write(line+"\n");
                 }
                 writer.flush();
             } catch (IOException e) {
@@ -55,5 +65,25 @@ public class VelocityAuth {
             e.printStackTrace();
         }
 
+        try {
+            storage = new AuthStorage(
+                    configuration.getNode("MySQL", "host").getString(),
+                    configuration.getNode("MySQL", "port").getInt(),
+                    configuration.getNode("MySQL", "database").getString(),
+                    configuration.getNode("MySQL", "user").getString(),
+                    configuration.getNode("MySQL", "password").getString(),
+                    configuration.getNode("MySQL", "table_prefix").getString()
+            );
+        } catch (Exception e) {
+            logger.error("Failed to load MySQL database!");
+            e.printStackTrace();
+        }
+
+        manager = new AuthManager(configuration);
+        server.getEventManager().register(this, manager);
+
+        AuthCommand command = new AuthCommand();
+        server.getCommandManager().register("auth",command);
+        server.getEventManager().register(this, command);
     }
 }
